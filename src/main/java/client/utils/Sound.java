@@ -1,27 +1,26 @@
 package client.utils;
 
-import java.io.File;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import javax.sound.sampled.*;
 import java.io.IOException;
 
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
-import javax.sound.sampled.FloatControl;
-import javax.sound.sampled.LineEvent;
-import javax.sound.sampled.LineListener;
-import javax.sound.sampled.LineUnavailableException;
-import javax.sound.sampled.UnsupportedAudioFileException;
-
 public class Sound implements AutoCloseable {
+    private static final Logger soundLogger = LogManager.getLogger(Sound.class.getName());
     private boolean released = false;
     private AudioInputStream stream = null;
     private Clip clip = null;
     private FloatControl volumeControl = null;
     private boolean playing = false;
+    private final String SOUND_NEW_MSG = "client/sounds/1.wav";
 
-    public Sound(File f) {
+    public Sound(int what) {
+        ClassLoader cl = this.getClass().getClassLoader();
         try {
-            stream = AudioSystem.getAudioInputStream(f);
+            switch(what) {
+                case 1:stream = AudioSystem.getAudioInputStream(cl.getResource(SOUND_NEW_MSG)); //Новое сообщение
+            }
             clip = AudioSystem.getClip();
             clip.open(stream);
             clip.addLineListener(new Listener());
@@ -30,7 +29,6 @@ public class Sound implements AutoCloseable {
         } catch (IOException | UnsupportedAudioFileException | LineUnavailableException exc) {
             exc.printStackTrace();
             released = false;
-
             close();
         }
     }
@@ -86,7 +84,7 @@ public class Sound implements AutoCloseable {
             try {
                 stream.close();
             } catch (IOException exc) {
-                exc.printStackTrace();
+                soundLogger.error("stream_error", exc);
             }
     }
 
@@ -117,16 +115,10 @@ public class Sound implements AutoCloseable {
             try {
                 while (playing)
                     clip.wait();
-            } catch (InterruptedException exc) {}
+            } catch (InterruptedException exc) {
+                soundLogger.error("join_error", exc);
+            }
         }
-    }
-
-    // Статический метод, для удобства
-    public static Sound playSound(String path) {
-        File f = new File(path);
-        Sound snd = new Sound(f);
-        snd.play();
-        return snd;
     }
 
     private class Listener implements LineListener {
@@ -139,4 +131,16 @@ public class Sound implements AutoCloseable {
             }
         }
     }
+
+    /**
+    * Статические методы, для удобства
+     * 1 - Новое сообщение (Указывается для конструктора
+     * 2 - ... Задать в конструкторе и создать метод
+    */
+    public static Sound playSoundNewMessage() {
+        Sound snd = new Sound(1);
+        snd.play();
+        return snd;
+    }
+
 }
